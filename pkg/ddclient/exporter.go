@@ -9,17 +9,17 @@ import (
 )
 
 type DeepDetectCollector struct {
-	PredictSuccess       *prometheus.Desc
-	PredictFailure       *prometheus.Desc
-	InferenceCount       *prometheus.Desc
-	PredictDurationSum   *prometheus.Desc
-	TransformDurationSum *prometheus.Desc
-	PredictCount         *prometheus.Desc
-	AvgBatchSize         *prometheus.Desc
-	DataMemTest          *prometheus.Desc
-	DataMemTrain         *prometheus.Desc
-	Flops                *prometheus.Desc
-	Params               *prometheus.Desc
+	PredictRequestsSuccessTotal *prometheus.Desc
+	PredictRequestsFailureTotal *prometheus.Desc
+	InferenceRequestsTotal      *prometheus.Desc
+	PredictDurationTotal        *prometheus.Desc
+	TransformDurationTotal      *prometheus.Desc
+	PredictRequestsTotal        *prometheus.Desc
+	AvgBatchSize                *prometheus.Desc
+	DataMemTest                 *prometheus.Desc
+	DataMemTrain                *prometheus.Desc
+	Flops                       *prometheus.Desc
+	Params                      *prometheus.Desc
 
 	// Other metrics for DD availability
 	Available *prometheus.Desc
@@ -39,17 +39,17 @@ func NewDeepDetectCollector(endpoint url.URL) (*DeepDetectCollector, error) {
 		"dd_commit":  info.Head.Commit,
 	}
 	return &DeepDetectCollector{
-		PredictSuccess:       prometheus.NewDesc("dd_predict_success_count", "PredictSuccess value", labelsInOrder(), constLabels),
-		PredictFailure:       prometheus.NewDesc("dd_predict_failure_count", "PredictFailure value", labelsInOrder(), constLabels),
-		InferenceCount:       prometheus.NewDesc("dd_inference_count", "InferenceCount value", labelsInOrder(), constLabels),
-		PredictCount:         prometheus.NewDesc("dd_predict_count", "PredictCount value", labelsInOrder(), constLabels),
-		PredictDurationSum:   prometheus.NewDesc("dd_predict_duration_sum", "Total prediction time in seconds", labelsInOrder(), constLabels),
-		TransformDurationSum: prometheus.NewDesc("dd_transform_duration_sum", "Total transformation time in seconds", labelsInOrder(), constLabels),
-		AvgBatchSize:         prometheus.NewDesc("dd_batch_size_avg", "AvgBatchSize value", labelsInOrder(), constLabels),
-		DataMemTest:          prometheus.NewDesc("dd_data_mem_test", "DataMemTest value", labelsInOrder(), constLabels),
-		DataMemTrain:         prometheus.NewDesc("dd_data_mem_train", "DataMemTrain value", labelsInOrder(), constLabels),
-		Flops:                prometheus.NewDesc("dd_flops", "Flops value", labelsInOrder(), constLabels),
-		Params:               prometheus.NewDesc("dd_params", "Params value", labelsInOrder(), constLabels),
+		PredictRequestsSuccessTotal: prometheus.NewDesc("deepdetect_predict_requests_success_total", "Total number of succesful predicts", labelsInOrder(), constLabels),
+		PredictRequestsFailureTotal: prometheus.NewDesc("deepdetect_predict_requests_failure_total", "Total number of failed predicts", labelsInOrder(), constLabels),
+		InferenceRequestsTotal:      prometheus.NewDesc("deepdetect_inference_requests_total", "Total number of succesful inferences", labelsInOrder(), constLabels),
+		PredictRequestsTotal:        prometheus.NewDesc("deepdetect_predict_requests_total", "Total number of predicts", labelsInOrder(), constLabels),
+		PredictDurationTotal:        prometheus.NewDesc("deepdetect_predict_duration_seconds_total", "Total prediction time in seconds", labelsInOrder(), constLabels),
+		TransformDurationTotal:      prometheus.NewDesc("deepdetect_transform_duration_seconds_total", "Total transformation time in seconds", labelsInOrder(), constLabels),
+		AvgBatchSize:                prometheus.NewDesc("deepdetect_batch_size_avg", "AvgBatchSize value", labelsInOrder(), constLabels),
+		DataMemTest:                 prometheus.NewDesc("deepdetect_data_mem_test_bytes", "DataMemTest value", labelsInOrder(), constLabels),
+		DataMemTrain:                prometheus.NewDesc("deepdetect_data_mem_train_bytes", "DataMemTrain value", labelsInOrder(), constLabels),
+		Flops:                       prometheus.NewDesc("deepdetect_flops", "Flops value", labelsInOrder(), constLabels),
+		Params:                      prometheus.NewDesc("deepdetect_params", "Params value", labelsInOrder(), constLabels),
 
 		Available: prometheus.NewDesc("dd_available", "DeepDetect availability", nil, constLabels),
 		cli:       &cli,
@@ -58,12 +58,11 @@ func NewDeepDetectCollector(endpoint url.URL) (*DeepDetectCollector, error) {
 }
 
 func (c *DeepDetectCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- c.PredictSuccess
-	ch <- c.PredictFailure
-	ch <- c.PredictCount
-	ch <- c.PredictDurationSum
-	ch <- c.TransformDurationSum
-	ch <- c.PredictCount
+	ch <- c.PredictRequestsSuccessTotal
+	ch <- c.PredictRequestsFailureTotal
+	ch <- c.PredictRequestsTotal
+	ch <- c.PredictDurationTotal
+	ch <- c.TransformDurationTotal
 	ch <- c.AvgBatchSize
 	ch <- c.DataMemTest
 	ch <- c.DataMemTrain
@@ -113,13 +112,13 @@ func (c *DeepDetectCollector) Collect(ch chan<- prometheus.Metric) {
 
 	for _, serviceMetrics := range metrics {
 
-		serviceMetrics.maybeMetric(ch, c.AvgBatchSize, prometheus.GaugeValue, serviceMetrics.Body.ServiceStats.AvgBatchSize, msToSec)
-		serviceMetrics.maybeMetric(ch, c.PredictSuccess, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.PredictSuccess, noopTransformer)
-		serviceMetrics.maybeMetric(ch, c.PredictFailure, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.PredictFailure, noopTransformer)
-		serviceMetrics.maybeMetric(ch, c.PredictCount, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.PredictCount, noopTransformer)
-		serviceMetrics.maybeMetric(ch, c.InferenceCount, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.InferenceCount, noopTransformer)
-		serviceMetrics.maybeMetric(ch, c.PredictDurationSum, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.TotalPredictDuration, msToSec)
-		serviceMetrics.maybeMetric(ch, c.TransformDurationSum, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.TotalTransformDuration, msToSec)
+		serviceMetrics.maybeMetric(ch, c.AvgBatchSize, prometheus.GaugeValue, serviceMetrics.Body.ServiceStats.AvgBatchSize, noopTransformer)
+		serviceMetrics.maybeMetric(ch, c.PredictRequestsSuccessTotal, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.PredictSuccess, noopTransformer)
+		serviceMetrics.maybeMetric(ch, c.PredictRequestsFailureTotal, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.PredictFailure, noopTransformer)
+		serviceMetrics.maybeMetric(ch, c.PredictRequestsTotal, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.PredictCount, noopTransformer)
+		serviceMetrics.maybeMetric(ch, c.InferenceRequestsTotal, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.InferenceCount, noopTransformer)
+		serviceMetrics.maybeMetric(ch, c.PredictDurationTotal, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.TotalPredictDuration, msToSec)
+		serviceMetrics.maybeMetric(ch, c.TransformDurationTotal, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.TotalTransformDuration, msToSec)
 		serviceMetrics.maybeMetric(ch, c.DataMemTest, prometheus.GaugeValue, serviceMetrics.Body.Stats.DataMemTest, noopTransformer)
 		serviceMetrics.maybeMetric(ch, c.DataMemTrain, prometheus.GaugeValue, serviceMetrics.Body.Stats.DataMemTrain, noopTransformer)
 		serviceMetrics.maybeMetric(ch, c.Flops, prometheus.GaugeValue, serviceMetrics.Body.Stats.Flops, noopTransformer)
