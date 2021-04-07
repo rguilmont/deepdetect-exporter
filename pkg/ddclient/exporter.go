@@ -43,8 +43,8 @@ func NewDeepDetectCollector(endpoint url.URL) (*DeepDetectCollector, error) {
 		PredictFailure:       prometheus.NewDesc("dd_predict_failure_count", "PredictFailure value", labelsInOrder(), constLabels),
 		InferenceCount:       prometheus.NewDesc("dd_inference_count", "InferenceCount value", labelsInOrder(), constLabels),
 		PredictCount:         prometheus.NewDesc("dd_predict_count", "PredictCount value", labelsInOrder(), constLabels),
-		PredictDurationSum:   prometheus.NewDesc("dd_predict_duration_sum", "Total prediction time in ms", labelsInOrder(), constLabels),
-		TransformDurationSum: prometheus.NewDesc("dd_transform_duration_sum", "Total ", labelsInOrder(), constLabels),
+		PredictDurationSum:   prometheus.NewDesc("dd_predict_duration_sum", "Total prediction time in seconds", labelsInOrder(), constLabels),
+		TransformDurationSum: prometheus.NewDesc("dd_transform_duration_sum", "Total transformation time in seconds", labelsInOrder(), constLabels),
 		AvgBatchSize:         prometheus.NewDesc("dd_batch_size_avg", "AvgBatchSize value", labelsInOrder(), constLabels),
 		DataMemTest:          prometheus.NewDesc("dd_data_mem_test", "DataMemTest value", labelsInOrder(), constLabels),
 		DataMemTrain:         prometheus.NewDesc("dd_data_mem_train", "DataMemTrain value", labelsInOrder(), constLabels),
@@ -72,7 +72,8 @@ func (c *DeepDetectCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 // maybeMetric Send metric, if exist, to chanel. If value of metric is nil, or uncastable to float64, then print a warning or an error.
-func (st *ServiceStatisticsFromDD) maybeMetric(ch chan<- prometheus.Metric, p *prometheus.Desc, valueType prometheus.ValueType, value interface{}) {
+// Transform func will transform
+func (st *ServiceStatisticsFromDD) maybeMetric(ch chan<- prometheus.Metric, p *prometheus.Desc, valueType prometheus.ValueType, value interface{}, transformFunc metricTransformer) {
 
 	if reflect.ValueOf(value).IsNil() {
 		// It happens because DD api response is still evolving.
@@ -97,7 +98,7 @@ func (st *ServiceStatisticsFromDD) maybeMetric(ch chan<- prometheus.Metric, p *p
 	ch <- prometheus.MustNewConstMetric(
 		p,
 		valueType,
-		prometheusValue,
+		transformFunc(prometheusValue),
 		evaluateLabels(*st)...,
 	)
 }
@@ -112,17 +113,17 @@ func (c *DeepDetectCollector) Collect(ch chan<- prometheus.Metric) {
 
 	for _, serviceMetrics := range metrics {
 
-		serviceMetrics.maybeMetric(ch, c.AvgBatchSize, prometheus.GaugeValue, serviceMetrics.Body.ServiceStats.AvgBatchSize)
-		serviceMetrics.maybeMetric(ch, c.PredictSuccess, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.PredictSuccess)
-		serviceMetrics.maybeMetric(ch, c.PredictFailure, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.PredictFailure)
-		serviceMetrics.maybeMetric(ch, c.PredictCount, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.PredictCount)
-		serviceMetrics.maybeMetric(ch, c.InferenceCount, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.InferenceCount)
-		serviceMetrics.maybeMetric(ch, c.PredictDurationSum, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.TotalPredictDuration)
-		serviceMetrics.maybeMetric(ch, c.TransformDurationSum, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.TotalTransformDuration)
-		serviceMetrics.maybeMetric(ch, c.DataMemTest, prometheus.GaugeValue, serviceMetrics.Body.Stats.DataMemTest)
-		serviceMetrics.maybeMetric(ch, c.DataMemTrain, prometheus.GaugeValue, serviceMetrics.Body.Stats.DataMemTrain)
-		serviceMetrics.maybeMetric(ch, c.Flops, prometheus.GaugeValue, serviceMetrics.Body.Stats.Flops)
-		serviceMetrics.maybeMetric(ch, c.Params, prometheus.GaugeValue, serviceMetrics.Body.Stats.Params)
+		serviceMetrics.maybeMetric(ch, c.AvgBatchSize, prometheus.GaugeValue, serviceMetrics.Body.ServiceStats.AvgBatchSize, msToSec)
+		serviceMetrics.maybeMetric(ch, c.PredictSuccess, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.PredictSuccess, noopTransformer)
+		serviceMetrics.maybeMetric(ch, c.PredictFailure, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.PredictFailure, noopTransformer)
+		serviceMetrics.maybeMetric(ch, c.PredictCount, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.PredictCount, noopTransformer)
+		serviceMetrics.maybeMetric(ch, c.InferenceCount, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.InferenceCount, noopTransformer)
+		serviceMetrics.maybeMetric(ch, c.PredictDurationSum, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.TotalPredictDuration, msToSec)
+		serviceMetrics.maybeMetric(ch, c.TransformDurationSum, prometheus.CounterValue, serviceMetrics.Body.ServiceStats.TotalTransformDuration, msToSec)
+		serviceMetrics.maybeMetric(ch, c.DataMemTest, prometheus.GaugeValue, serviceMetrics.Body.Stats.DataMemTest, noopTransformer)
+		serviceMetrics.maybeMetric(ch, c.DataMemTrain, prometheus.GaugeValue, serviceMetrics.Body.Stats.DataMemTrain, noopTransformer)
+		serviceMetrics.maybeMetric(ch, c.Flops, prometheus.GaugeValue, serviceMetrics.Body.Stats.Flops, noopTransformer)
+		serviceMetrics.maybeMetric(ch, c.Params, prometheus.GaugeValue, serviceMetrics.Body.Stats.Params, noopTransformer)
 
 	}
 
