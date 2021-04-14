@@ -10,5 +10,5 @@ RUN cd cmd && \
     go build
 
 FROM alpine:3.12 as run
-COPY --from=build /opt/cmd/cmd /opt/deedetext-exporter
-ENTRYPOINT ["/opt/deedetext-exporter"]
+COPY --from=build /opt/cmd/cmd /opt/deedetect-exporter
+ENTRYPOINT ["/opt/deedetect-exporter"]
