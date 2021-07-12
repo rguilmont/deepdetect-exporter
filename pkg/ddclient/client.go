@@ -63,7 +63,12 @@ func NewDDMetricsClient(endpoint url.URL) DDMetricsClient {
 		endpoint,
 	}
 
+	// Disable Accept-Encoding: gzip because of https://github.com/jolibrain/deepdetect/issues/1316
+	client.httpClient.Transport = &http.Transport{
+		DisableCompression: true,
+	}
 	client.httpClient.Timeout = defaultTimeout
+
 	return client
 }
 
