@@ -1,0 +1,31 @@
+#/opt/bitnami/prometheus/conf/prometheus.yml
+
+version: "3.3"
+services:
+  dd-exporter:
+    build: ../../
+    command: ["-listen", "0.0.0.0:8181", "-monitor", "http://deepdetect:8080"]
+    ports:
+      - "8081:8081"
+  prometheus:
+    image: "bitnami/prometheus:latest"
+    volumes:
+      - ./prometheus.yml:/opt/bitnami/prometheus/conf/prometheus.yml
+    ports:
+      - "9090:9090"
+  grafana:
+    image: "grafana/grafana:8.2.5"
+    ports:
+      - 3000:3000
+    volumes:
+      - './grafana/:/var/lib/grafana/'
+  deepdetect:
+    image: "jolibrain/deepdetect_cpu"
+    ports:
+      - 8080:8080
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.58.0/24
